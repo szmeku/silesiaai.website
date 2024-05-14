@@ -4,6 +4,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>tinygrad: A simple and powerful neural network framework</title>
     <style>
         body {
@@ -39,6 +40,9 @@
         }
         .quiet, .links-container a { color: inherit; }
         .links-container { font-size: 24px; margin: 20px; }
+
+
+
         .links-container a { text-decoration: none; margin: 0 10px; }
         .product-photo { display: block; max-width: 640px; width: 100%; margin: 0 auto; }
         .faqtable dt { margin-bottom: 0.75em; font-style: italic; }
@@ -48,6 +52,13 @@
             position: absolute;
             z-index: -100;
         }
+
+        /* for phones */
+        @media(max-width: 600px) {
+            .svg-container { max-width: none;}
+            .links-container { font-size: 2rem;}
+        }
+
     </style>
 </head>
 <div class="landing"
