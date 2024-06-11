@@ -11,6 +11,15 @@ particlesJS.load('particles-js', 'particles.json', function() {
 
 /* Otherwise just put the config content (json): */
 
+
+// tood: reload should be removed after event
+window.onload = function() {
+    var hash = window.location.hash;
+    if (hash === "#meetup") {
+        window.location.href = "https://www.meetup.com/silesia-ai/events/301509592/";
+    }
+}
+
 particlesJS('particles-js',
 
     {
