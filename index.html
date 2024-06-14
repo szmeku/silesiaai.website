@@ -102,6 +102,17 @@
             z-index: -100;
         }
 
+        .image {
+            margin: 40px auto;
+            text-align: center;
+        }
+
+        .image img {
+            width: 100%;
+            height: auto;
+            max-width: 1200px;
+        }
+
         /* for phones */
         @media (max-width: 600px) {
             .main {
@@ -115,18 +126,10 @@
             .links-container {
                 font-size: 2rem;
             }
-        }
 
-        .image {
-            margin: 40px auto;
-            margin-bottom: -60px;
-            text-align: center;
-        }
-
-        .image img {
-            width: 100%;
-            height: auto;
-            max-width: 1200px;
+            .image{
+                margin-top:-100px;
+            }
         }
 
     </style>
@@ -134,17 +137,15 @@
 <body>
 <div class="main">
 
-    <div class="image">
-        <a target="_blank" href="https://www.meetup.com/silesia-ai/events/301509592"
-        >
-            <img src="post_facebook.jpg" alt="">
-        </a>
-    </div>
-
     <div class="landing"
          id="particles-js"
     >
-
+        <div class="image">
+            <a target="_blank" href="https://www.meetup.com/silesia-ai/events/301509592"
+            >
+                <img src="post_facebook.jpg" alt="">
+            </a>
+        </div>
 
         <div class="svg-container">
             <svg id="Warstwa_1" data-name="Warstwa 1" xmlns="http://www.w3.org/2000/svg" version="1.1"
