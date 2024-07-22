@@ -145,7 +145,7 @@ input, select, textarea {
 			border: 0;
 		}
 
-	h2 {
+	h1, h2 {
 		font-size: 2em;
 		line-height: 1.5em;
 		letter-spacing: -0.025em;
@@ -2179,7 +2179,7 @@ input, select, textarea {
 		margin: 0 0 1.5em 0;
 	}
 
-	header h2 + p {
+	header h1 + p, header h2 + p {
 		font-size: 1.25em;
 		margin-top: -1em;
 		line-height: 1.75em;
@@ -3533,7 +3533,7 @@ input, select, textarea {
 				vertical-align: middle;
 			}
 
-				#banner .content header h2 {
+				#banner .content header h1, #banner .content header h2 {
 					font-size: 2.5em;
 					margin: 0;
 				}
@@ -3794,7 +3794,7 @@ input, select, textarea {
 				font-size: 12pt;
 			}
 
-			h2 {
+			h1, h2 {
 				font-size: 1.5em;
 			}
 
@@ -3812,7 +3812,7 @@ input, select, textarea {
 				display: none;
 			}
 
-			header h2 + p {
+			header h1 + p, header h2 + p {
 				font-size: 1em;
 			}
 
@@ -3880,7 +3880,7 @@ input, select, textarea {
 					padding: 4.0625em 1.5em 4.875em 1.5em;
 				}
 
-					#banner .content header h2 {
+					#banner .content header h1, #banner .content header h2 {
 						font-size: 1.5em;
 					}
 
