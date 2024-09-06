@@ -16,7 +16,7 @@ particlesJS.load('particles-js', 'particles.json', function() {
 window.onload = function() {
     var hash = window.location.hash;
     if (hash === "#meetup") {
-        window.location.href = "https://www.meetup.com/silesia-ai/events/301509592/";
+        window.location.href = "https://www.meetup.com/silesia-ai/events/303274382/";
     }
 }
 
