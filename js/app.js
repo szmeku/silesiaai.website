@@ -22,6 +22,10 @@ window.onload = function() {
     if (hash === "#mixer") {
         window.location.href = "https://docs.google.com/spreadsheets/d/1UYJ3bGYM-C7yME0QkP8iEszHycBGjEGJabCCWZnydvM/edit?gid=0#gid=0";
     }
+
+    if (hash === "#trendy") {
+        window.location.href = "https://docs.google.com/document/d/1tzIHKgRzGdaCbGTRUz8xqSbO-K4LKN3UpIU5kRVAXuo/edit?usp=sharing";
+    }
 }
 
 particlesJS('particles-js',
