@@ -18,6 +18,10 @@ window.onload = function() {
     if (hash === "#meetup") {
         window.location.href = "https://www.meetup.com/silesia-ai/events/303274382/";
     }
+
+    if (hash === "#mixer") {
+        window.location.href = "https://docs.google.com/spreadsheets/d/1UYJ3bGYM-C7yME0QkP8iEszHycBGjEGJabCCWZnydvM/edit?gid=0#gid=0";
+    }
 }
 
 particlesJS('particles-js',
