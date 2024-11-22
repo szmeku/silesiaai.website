@@ -13,25 +13,18 @@ function getEventsEdges(groupData, type) {
     return [];
 }
 
-window.fetchAndParseMeetupEvents = async function(groupUrlname, type) {
-  try {
+window.fetchAndParseMeetupEvents = async function (groupUrlname, type) {
+    try {
 
-    const corsProxy = 'https://api.allorigins.win/get?url=';
-    const url = `${corsProxy}https://www.meetup.com/${groupUrlname}/events/?type=${type}`;
-
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'text/html',
-        // 'x-cors-api-key': 'temp_f547be1c3f7a7266c0ecad11a1269550', // Get your free API key from cors.sh
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
+        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.meetup.com/${groupUrlname}/events/?type=${type}`)}`, {
+            preflight: false
+        })
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const htmlContent = await response.json().then(v=>v.contents);
+        const htmlContent = await response.json().then(v => v.contents);
 
         // Parse the HTML content
         function parseMeetupEvents(htmlContent) {
