@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+<script>
+    let network;
+    let signals = [];
+
+    class NeuralNetwork {
+        constructor() {
+            this.layers = [4, 6, 6, 4]; // Network architecture
+            this.nodes = [];
+            this.connections = [];
+            this.initNetwork();
+        }
+
+        initNetwork() {
+            let ySpacing = height / (this.layers.length + 1);
+
+            // Create nodes
+            for (let layer = 0; layer < this.layers.length; layer++) {
+                let nodes = [];
+                let xSpacing = width / (this.layers[layer] + 1);
+
+                for (let node = 0; node < this.layers[layer]; node++) {
+                    nodes.push(new Neuron(
+                        xSpacing * (node + 1),
+                        ySpacing * (layer + 1),
+                        layer
+                    ));
+                }
+                this.nodes.push(nodes);
+            }
+
+            // Create connections
+            for (let layer = 0; layer < this.layers.length - 1; layer++) {
+                for (let nodeA = 0; nodeA < this.layers[layer]; nodeA++) {
+                    for (let nodeB = 0; nodeB < this.layers[layer + 1]; nodeB++) {
+                        this.connections.push(new Connection(
+                            this.nodes[layer][nodeA],
+                            this.nodes[layer + 1][nodeB]
+                        ));
+                    }
+                }
+            }
+        }
+
+        update() {
+            // Update all nodes
+            for (let layer of this.nodes) {
+                for (let node of layer) {
+                    node.update();
+                }
+            }
+
+            // Update all connections
+            for (let conn of this.connections) {
+                conn.update();
+            }
+
+            // Update signals
+            for (let i = signals.length - 1; i >= 0; i--) {
+                signals[i].update();
+                if (signals[i].isDead()) {
+                    signals.splice(i, 1);
+                }
+            }
+        }
+
+        draw() {
+            // Draw connections first
+            for (let conn of this.connections) {
+                conn.draw();
+            }
+
+            // Draw signals
+            for (let signal of signals) {
+                signal.draw();
+            }
+
+            // Draw nodes on top
+            for (let layer of this.nodes) {
+                for (let node of layer) {
+                    node.draw();
+                }
+            }
+        }
+
+        propagateSignal(startNode) {
+            // Create signals from the clicked node to all connected nodes in next layer
+            let layer = startNode.layer;
+            if (layer < this.layers.length - 1) {
+                for (let conn of this.connections) {
+                    if (conn.from === startNode) {
+                        signals.push(new Signal(conn));
+                        conn.activate();
+                    }
+                }
+            }
+        }
+    }
+
+    class Neuron {
+        constructor(x, y, layer) {
+            this.x = x;
+            this.y = y;
+            this.layer = layer;
+            this.radius = 20;
+            this.activation = 0;
+            this.color = color(100, 150, 255);
+            this.isHovered = false;
+        }
+
+        update() {
+            // Check if mouse is hovering
+            this.isHovered = dist(mouseX, mouseY, this.x, this.y) < this.radius;
+            if (this.isHovered) {
+                cursor('pointer');
+            }
+
+            // Decay activation
+            this.activation *= 0.95;
+
+            // Add subtle animation
+            this.y += sin(frameCount * 0.05 + this.x) * 0.3;
+        }
+
+        activate() {
+            this.activation = 1;
+        }
+
+        draw() {
+            push();
+            translate(this.x, this.y);
+
+            // Draw glow
+            let glowSize = map(this.activation, 0, 1, 0, 30);
+            if (glowSize > 1) {
+                noStroke();
+                fill(red(this.color), green(this.color), blue(this.color), 50);
+                circle(0, 0, this.radius * 2 + glowSize);
+            }
+
+            // Draw node
+            noStroke();
+            let c = lerpColor(this.color, color(255), this.activation);
+            fill(c);
+            circle(0, 0, this.radius * 2);
+
+            // Draw hover effect
+            if (this.isHovered) {
+                stroke(255, 100);
+                noFill();
+                circle(0, 0, this.radius * 2.2);
+            }
+
+            pop();
+        }
+    }
+
+    class Connection {
+        constructor(fromNode, toNode) {
+            this.from = fromNode;
+            this.to = toNode;
+            this.activation = 0;
+            this.weight = random(0.5, 1);
+        }
+
+        update() {
+            // Decay activation
+            this.activation *= 0.95;
+        }
+
+        activate() {
+            this.activation = 1;
+        }
+
+        draw() {
+            // Draw connection line
+            stroke(100, 150, 255, 50 + this.activation * 205);
+            strokeWeight(1 + this.activation * 2);
+            line(this.from.x, this.from.y, this.to.x, this.to.y);
+        }
+    }
+
+    class Signal {
+        constructor(connection) {
+            this.connection = connection;
+            this.progress = 0;
+            this.speed = 0.05;
+            this.size = 8;
+        }
+
+        update() {
+            this.progress += this.speed;
+            if (this.progress >= 1) {
+                this.connection.to.activate();
+                network.propagateSignal(this.connection.to);
+            }
+        }
+
+        draw() {
+            // Calculate current position
+            let x = lerp(this.connection.from.x, this.connection.to.x, this.progress);
+            let y = lerp(this.connection.from.y, this.connection.to.y, this.progress);
+
+            // Draw signal
+            push();
+            translate(x, y);
+            noStroke();
+            fill(255, 255, 255, 200);
+            circle(0, 0, this.size);
+            pop();
+        }
+
+        isDead() {
+            return this.progress >= 1;
+        }
+    }
+
+    function setup() {
+        createCanvas(windowWidth, windowHeight);
+        network = new NeuralNetwork();
+    }
+
+    function draw() {
+        background(0, 30);
+        network.update();
+        network.draw();
+
+        // Reset cursor if not over any node
+        let overNode = false;
+        for (let layer of network.nodes) {
+            for (let node of layer) {
+                if (node.isHovered) {
+                    overNode = true;
+                    break;
+                }
+            }
+        }
+        if (!overNode) cursor('default');
+    }
+
+    function mouseClicked() {
+        // Check if a node was clicked
+        for (let layer of network.nodes) {
+            for (let node of layer) {
+                if (node.isHovered) {
+                    node.activate();
+                    network.propagateSignal(node);
+                    break;
+                }
+            }
+        }
+    }
+
+    function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        network = new NeuralNetwork(); // Recreate network to adjust to new size
+    }
+</script>
+</body>
+</html>
