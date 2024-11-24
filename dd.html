@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { position: fixed; top: 0; left: 0; }
+    </style>
+</head>
+<body>
+<script>
+    let network = { nodes: [], connections: [] };
+    let particles = [];
+    let progress = 0;
+    let drawingConnection = -1;
+
+    class Node {
+        constructor(x, y, z) {
+            this.x = x;
+            this.y = y;
+            this.z = z; // Add depth for more chaotic positioning
+            this.radius = random(3, 6); // Smaller nodes
+            this.drawn = false;
+            this.alpha = 0;
+            this.pulsePhase = random(TWO_PI);
+            this.connections = 0; // Track number of connections
+        }
+
+        draw() {
+            if (!this.drawn) return;
+
+            let pulse = sin(this.pulsePhase + frameCount * 0.03) * 0.5 + 0.5;
+            let depth = map(this.z, -100, 100, 0.5, 1); // Scale based on depth
+
+            // Draw glow
+            push();
+            blendMode(ADD);
+            noStroke();
+            for (let i = 0; i < 2; i++) {
+                let size = this.radius * (2 + i) * (1 + pulse * 0.2) * depth;
+                fill(50, 100, 255, (5 - i * 2) * (this.alpha / 255) * depth);
+                circle(this.x, this.y, size);
+            }
+            pop();
+
+            // Draw core
+            noStroke();
+            fill(200, 230, 255, this.alpha * depth);
+            circle(this.x, this.y, this.radius * (1 + pulse * 0.1) * depth);
+        }
+
+        reveal() {
+            if (!this.drawn) {
+                this.drawn = true;
+                for (let i = 0; i < 5; i++) {
+                    particles.push(new Particle(this.x, this.y));
+                }
+            }
+            this.alpha = min(this.alpha + 10, 255);
+        }
+    }
+
+    class Connection {
+        constructor(from, to) {
+            this.from = from;
+            this.to = to;
+            this.progress = 0;
+            this.drawn = false;
+            this.alpha = 0;
+            this.signals = [];
+            this.thickness = random(0.5, 1.5); // Thinner connections
+            this.controlPoints = this.generateControlPoints();
+        }
+
+        generateControlPoints() {
+            let midX = (this.from.x + this.to.x) / 2;
+            let midY = (this.from.y + this.to.y) / 2;
+            let dist = sqrt(pow(this.to.x - this.from.x, 2) + pow(this.to.y - this.from.y, 2));
+
+            return [
+                {
+                    x: midX + random(-dist/2, dist/2),
+                    y: midY + random(-dist/2, dist/2)
+                },
+                {
+                    x: midX + random(-dist/2, dist/2),
+                    y: midY + random(-dist/2, dist/2)
+                }
+            ];
+        }
+
+        draw() {
+            if (this.progress <= 0) return;
+
+            push();
+            blendMode(ADD);
+
+            // Draw curved connection with glow
+            for (let i = 0; i < 2; i++) {
+                stroke(100, 150, 255, (15 - i * 5) * (this.alpha / 255));
+                strokeWeight((this.thickness + i * 0.5) * (1 - i * 0.3));
+                noFill();
+
+                beginShape();
+                vertex(this.from.x, this.from.y);
+                let endX = lerp(this.from.x, this.to.x, this.progress);
+                let endY = lerp(this.from.y, this.to.y, this.progress);
+
+                // Calculate control points for current progress
+                let cp1x = lerp(this.from.x, this.controlPoints[0].x, this.progress);
+                let cp1y = lerp(this.from.y, this.controlPoints[0].y, this.progress);
+                let cp2x = lerp(this.controlPoints[0].x, this.controlPoints[1].x, this.progress);
+                let cp2y = lerp(this.controlPoints[0].y, this.controlPoints[1].y, this.progress);
+
+                bezierVertex(cp1x, cp1y, cp2x, cp2y, endX, endY);
+                endShape();
+            }
+            pop();
+
+            // Draw signals
+            for (let signal of this.signals) {
+                signal.draw();
+            }
+        }
+
+        update() {
+            if (this.drawn) {
+                this.alpha = min(this.alpha + 5, 255);
+
+                for (let i = this.signals.length - 1; i >= 0; i--) {
+                    this.signals[i].update();
+                    if (this.signals[i].isDone()) {
+                        this.signals.splice(i, 1);
+                    }
+                }
+
+                if (random() < 0.02) {
+                    this.signals.push(new Signal(this));
+                }
+            }
+        }
+    }
+
+    class Signal {
+        constructor(connection) {
+            this.connection = connection;
+            this.progress = 0;
+            this.speed = random(0.02, 0.05);
+            this.size = random(2, 4);
+        }
+
+        update() {
+            this.progress += this.speed;
+        }
+
+        draw() {
+            let t = this.progress;
+            let p = this.getBezierPoint(t);
+
+            push();
+            blendMode(ADD);
+            noStroke();
+            for (let i = 0; i < 2; i++) {
+                fill(200, 230, 255, (50 - i * 20));
+                circle(p.x, p.y, this.size * (1 + i * 0.3));
+            }
+            pop();
+        }
+
+        getBezierPoint(t) {
+            let c = this.connection;
+            let x = bezierPoint(
+                c.from.x,
+                c.controlPoints[0].x,
+                c.controlPoints[1].x,
+                c.to.x,
+                t
+            );
+            let y = bezierPoint(
+                c.from.y,
+                c.controlPoints[0].y,
+                c.controlPoints[1].y,
+                c.to.y,
+                t
+            );
+            return {x, y};
+        }
+
+        isDone() {
+            return this.progress >= 1;
+        }
+    }
+
+    class Particle {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.vx = random(-2, 2);
+            this.vy = random(-2, 2);
+            this.life = 255;
+            this.size = random(1, 3);
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vx *= 0.95;
+            this.vy *= 0.95;
+            this.life -= 8;
+        }
+
+        draw() {
+            push();
+            blendMode(ADD);
+            noStroke();
+            fill(100, 150, 255, this.life * 0.3);
+            circle(this.x, this.y, this.size);
+            pop();
+        }
+
+        isDead() {
+            return this.life <= 0;
+        }
+    }
+
+    function setup() {
+        createCanvas(windowWidth, windowHeight);
+        createNetwork();
+    }
+
+    function createNetwork() {
+        // Create many more nodes in a more organic pattern
+        let nodeCount = 150; // Increased node count
+        let radius = min(width, height) * 0.4;
+
+        // Create nodes in a brain-like shape
+        for (let i = 0; i < nodeCount; i++) {
+            let angle = random(TWO_PI);
+            let r = random(radius * 0.2, radius);
+            // Create more organic distribution using noise
+            let x = width/2 + cos(angle) * r + random(-50, 50);
+            let y = height/2 + sin(angle) * r * 0.6 + random(-30, 30);
+            let z = random(-100, 100);
+            network.nodes.push(new Node(x, y, z));
+        }
+
+        // Create connections based on proximity
+        for (let i = 0; i < network.nodes.length; i++) {
+            let node = network.nodes[i];
+            for (let j = i + 1; j < network.nodes.length; j++) {
+                let other = network.nodes[j];
+                let d = dist(node.x, node.y, other.x, other.y);
+
+                // Connect nearby nodes with higher probability for closer nodes
+                if (d < 150 && random() < map(d, 0, 150, 0.8, 0.1) && node.connections < 5 && other.connections < 5) {
+                    network.connections.push(new Connection(node, other));
+                    node.connections++;
+                    other.connections++;
+                }
+            }
+        }
+    }
+
+    function draw() {
+        background(0, 20);
+
+        // Update and draw particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            if (particles[i].isDead()) {
+                particles.splice(i, 1);
+            }
+        }
+
+        // Draw network
+        let currentNode = floor(progress * network.nodes.length);
+
+        // First draw connections
+        for (let conn of network.connections) {
+            conn.update();
+            conn.draw();
+        }
+
+        // Then draw nodes on top
+        for (let i = 0; i < network.nodes.length; i++) {
+            if (i <= currentNode) {
+                network.nodes[i].reveal();
+            }
+            network.nodes[i].draw();
+        }
+
+        // Progress the drawing
+        if (progress < 1) {
+            progress += 0.001; // Slower reveal
+
+            let connIndex = floor(progress * network.connections.length);
+            if (connIndex < network.connections.length && connIndex !== drawingConnection) {
+                drawingConnection = connIndex;
+                network.connections[connIndex].drawn = true;
+            }
+        }
+
+        // Update connection progress
+        for (let i = 0; i <= drawingConnection; i++) {
+            if (i < network.connections.length) {
+                network.connections[i].progress = min(network.connections[i].progress + 0.02, 1);
+            }
+        }
+    }
+
+    function mousePressed() {
+        network = {nodes: [], connections: []};
+        particles = [];
+        progress = 0;
+        drawingConnection = -1;
+        createNetwork();
+    }
+
+    function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        mousePressed();
+    }
+</script>
+</body>
+</html>
