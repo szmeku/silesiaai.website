@@ -1,3 +1,39 @@
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (event) => {
+    // Prevent the mini-infobar from appearing
+    event.preventDefault();
+    
+    // Save the event for later
+    deferredPrompt = event;
+    
+    // Show install button
+    const installButton = document.getElementById('install-button');
+    installButton.classList.remove('hidden');
+    
+    installButton.addEventListener('click', async () => {
+        // Hide the button
+        installButton.classList.add('hidden');
+        
+        // Show install prompt
+        deferredPrompt.prompt();
+        
+        // Wait for user choice
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User ${outcome} the installation`);
+        
+        // Clear the saved prompt
+        deferredPrompt = null;
+    });
+});
+
+// Hide button if app is already installed
+window.addEventListener('appinstalled', () => {
+    console.log('PWA was installed');
+    const installButton = document.getElementById('install-button');
+    installButton.classList.add('hidden');
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Check if app was opened from share target
     const urlParams = new URLSearchParams(window.location.search);

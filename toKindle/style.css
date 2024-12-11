@@ -24,3 +24,22 @@ body {
 #status.warning { background-color: #ff9800; color: white; }
 
 .hidden { display: none; } 
+
+#install-button {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 10px 0;
+    font-size: 16px;
+}
+
+#install-button:hover {
+    background-color: #1976D2;
+}
+
+.hidden {
+    display: none !important;
+} 
