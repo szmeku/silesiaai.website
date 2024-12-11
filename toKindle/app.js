@@ -21,19 +21,27 @@ document.getElementById('shareButton').addEventListener('click', async () => {
         return;
     }
 
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                url: url,
-                title: 'Send to Kindle',
-                text: `Send this article to Kindle: ${url}`
-            });
-            showStatus('Share sheet opened successfully', 'success');
-        } catch (error) {
-            showStatus('Sharing failed. Please try again.', 'error');
+    // Check if Web Share API is available AND if the platform supports sharing
+    if (navigator.share && navigator.canShare) {
+        const shareData = {
+            url: url,
+            title: 'Send to Kindle',
+            text: `Send this article to Kindle: ${url}`
+        };
+
+        // Check if this data can be shared on this platform
+        if (navigator.canShare(shareData)) {
+            try {
+                await navigator.share(shareData);
+                showStatus('Share sheet opened successfully', 'success');
+            } catch (error) {
+                showStatus('Sharing failed: ' + error.message, 'error');
+            }
+        } else {
+            showStatus('Sharing not supported on this platform', 'error');
         }
     } else {
-        showStatus('Sharing is only available on mobile devices', 'error');
+        showStatus('Sharing not available in this browser', 'error');
     }
 });
 
