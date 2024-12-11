@@ -72,7 +72,10 @@ async function fetchAndParseArticle(url, providedTitle = '') {
 }
 
 function shareViaEmail(article) {
-    // Try native sharing first
+    const blob = new Blob([article.html], { type: 'text/html' });
+    const file = new File([blob], 'article.html', { type: 'text/html' });
+
+    // Try native sharing first (mobile)
     if (navigator.share && navigator.canShare) {
         const shareData = {
             files: [file],
@@ -83,16 +86,17 @@ function shareViaEmail(article) {
         if (navigator.canShare(shareData)) {
             navigator.share(shareData)
                 .then(() => showStatus('Share sheet opened', 'success'))
-                .catch(error => handleFallbackSharing(article));
+                .catch(() => downloadFile(article))
+                .catch(error => showStatus('Share failed: ' + error.message, 'error'));
             return;
         }
     }
 
-    // Fallback for desktop: Create downloadable link
-    handleFallbackSharing(article);
+    // If native sharing not available, download the file
+    downloadFile(article);
 }
 
-function handleFallbackSharing(article) {
+function downloadFile(article) {
     const blob = new Blob([article.html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     
@@ -105,7 +109,7 @@ function handleFallbackSharing(article) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showStatus('Article downloaded. You can email it to your Kindle.', 'success');
+    showStatus('Article saved. Send it to your Kindle email.', 'success');
 }
 
 function showStatus(message, type) {

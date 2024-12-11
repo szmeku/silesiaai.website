@@ -12,21 +12,29 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => cache.addAll(ASSETS))
     );
+    self.skipWaiting(); // Ensure new service worker activates immediately
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(clients.claim()); // Take control of all pages immediately
 });
 
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
     
-    // Handle share target
-    if (url.pathname === '/toKindle/share-target/') {
-        event.respondWith(
-            Response.redirect('/toKindle/index.html?shared=' + encodeURIComponent(url.searchParams.get('url') || url.searchParams.get('text')))
-        );
-        return;
+    // Handle share target and direct navigation
+    if (url.pathname.endsWith('/share-target/') || url.pathname.endsWith('/toKindle/')) {
+        const targetUrl = url.searchParams.get('url') || url.searchParams.get('text');
+        if (targetUrl) {
+            event.respondWith(
+                Response.redirect('/toKindle/index.html?url=' + encodeURIComponent(targetUrl))
+            );
+            return;
+        }
     }
 
-    // Handle root path
-    if (url.pathname === '/toKindle/') {
+    // Serve index.html for root path
+    if (url.pathname === '/toKindle/' || url.pathname === '/toKindle/index.html') {
         event.respondWith(
             caches.match('/toKindle/index.html')
                 .then(response => response || fetch('/toKindle/index.html'))
@@ -34,6 +42,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // Handle all other requests
     event.respondWith(
         caches.match(event.request)
             .then(response => response || fetch(event.request))
