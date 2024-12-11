@@ -53,38 +53,9 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // For external requests, including CORS proxy
+    // For external requests
     if (!url.pathname.startsWith('/toKindle/')) {
-        // If it's already a CORS proxy request, let it through
-        if (url.href.includes('cors-anywhere.herokuapp.com')) {
-            event.respondWith(
-                fetch(event.request, {
-                    mode: 'cors',
-                    credentials: 'omit'
-                })
-            );
-            return;
-        }
-
-        // Otherwise, proxy the request
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/${event.request.url}`;
-        event.respondWith(
-            fetch(proxyUrl, {
-                mode: 'cors',
-                credentials: 'omit'
-            }).then(async response => {
-                if (!response.ok) {
-                    console.error('Proxy response not OK:', response.status, response.statusText);
-                    const text = await response.text();
-                    console.error('Response text:', text);
-                    throw new Error(`Proxy response ${response.status}`);
-                }
-                return response;
-            }).catch(error => {
-                console.error('Proxy fetch failed:', error);
-                return fetch(event.request); // Fallback to direct request
-            })
-        );
+        event.respondWith(fetch(event.request));
         return;
     }
 

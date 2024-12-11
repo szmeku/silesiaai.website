@@ -23,94 +23,112 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function fetchAndParseArticle(url, providedTitle = '') {
     try {
         console.log('Starting fetch for:', url);
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
-        console.log('Using proxy URL:', proxyUrl);
-        const response = await fetch(proxyUrl, {
-            mode: 'cors',
-            credentials: 'omit'
-        });
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        // Try different sources
+        const sources = [
+            {
+                name: 'Original',
+                url: url,
+                transform: url => `https://cors-anywhere.herokuapp.com/${url}`
+            },
+            {
+                name: 'Google Cache',
+                url: `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
+                transform: url => `https://cors-anywhere.herokuapp.com/${url}`
+            }
+        ];
+
+        let html = null;
+        let error = null;
+        let source = null;
+
+        // Try each source
+        for (const src of sources) {
+            try {
+                console.log(`Trying ${src.name}:`, src.url);
+                const proxyUrl = src.transform(src.url);
+                const response = await fetch(proxyUrl, {
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+                
+                if (!response.ok) continue;
+                
+                html = await response.text();
+                if (html && html.length > 1000) {
+                    source = src.name;
+                    break;
+                }
+            } catch (e) {
+                error = e;
+                continue;
+            }
         }
-        
-        const html = await response.text();
-        
-        // Check if this is likely an SPA
-        if (html.includes('react') || html.includes('chunk.js') || !html.includes('<article')) {
-            throw new Error('This appears to be a dynamic website. Please try sharing a direct article URL instead of the homepage.');
+
+        if (!html) {
+            throw error || new Error('Could not fetch content from any source');
         }
-        
+
+        console.log('Successfully fetched from:', source);
         console.log('Parsing HTML...');
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        
-        console.log('Received HTML length:', html.length);
-        console.log('First 500 chars of HTML:', html.substring(0, 500));
-        
+
         console.log('Creating Readability instance...', typeof Readability);
         if (typeof Readability === 'undefined') {
             throw new Error('Readability library not loaded properly');
         }
 
-        // Create a clone of the document to avoid modifications
-        const docClone = doc.cloneNode(true);
-        console.log('Document cloned');
-
-        // Initialize Readability with more options
-        const reader = new Readability(docClone, {
+        const reader = new Readability(doc, {
             debug: true,
             charThreshold: 20,
             classesToPreserve: ['article', 'content']
         });
-        console.log('Readability instance created');
 
         const article = reader.parse();
-        console.log('Parse result:', article);
         
         if (!article) {
-            console.error('Readability failed to parse article');
             throw new Error('Could not parse article content');
         }
 
         console.log('Article parsed successfully:', article.title);
-        
-        // Create clean HTML
-        const cleanHtml = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <title>${article.title}</title>
-                <style>
-                    body { 
-                        max-width: 800px; 
-                        margin: 0 auto; 
-                        padding: 20px;
-                        font-family: Georgia, serif;
-                        line-height: 1.6;
-                    }
-                    img { max-width: 100%; height: auto; }
-                </style>
-            </head>
-            <body>
-                <h1>${article.title}</h1>
-                ${DOMPurify.sanitize(article.content)}
-                <hr>
-                <p>Original URL: <a href="${url}">${url}</a></p>
-            </body>
-            </html>
-        `;
-
         return {
             title: article.title,
-            html: cleanHtml
+            html: createCleanHtml(article.title, article.content, url)
         };
     } catch (error) {
         console.error('Error details:', error);
         console.error('Response:', error.response);
         throw new Error(`Could not fetch article: ${error.message}`);
     }
+}
+
+function createCleanHtml(title, content, url) {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>${title}</title>
+            <style>
+                body { 
+                    max-width: 800px; 
+                    margin: 0 auto; 
+                    padding: 20px;
+                    font-family: Georgia, serif;
+                    line-height: 1.6;
+                }
+                img { max-width: 100%; height: auto; }
+            </style>
+        </head>
+        <body>
+            <h1>${title}</h1>
+            ${DOMPurify.sanitize(content)}
+            <hr>
+            <p>Original URL: <a href="${url}">${url}</a></p>
+        </body>
+        </html>
+    `;
 }
 
 function shareViaEmail(article) {

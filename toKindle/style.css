@@ -21,5 +21,6 @@ body {
 #status.success { background-color: #4CAF50; color: white; }
 #status.error { background-color: #f44336; color: white; }
 #status.info { background-color: #2196F3; color: white; }
+#status.warning { background-color: #ff9800; color: white; }
 
 .hidden { display: none; } 
