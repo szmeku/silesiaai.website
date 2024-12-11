@@ -1,11 +1,15 @@
 {
     "name": "Send to Kindle",
     "short_name": "ToKindle",
-    "start_url": "/toKindle/index.html",
+    "description": "Send web articles to your Kindle",
+    "start_url": "/toKindle/",
+    "id": "/toKindle/",
     "display": "standalone",
+    "display_override": ["standalone", "minimal-ui"],
     "background_color": "#ffffff",
     "theme_color": "#2196F3",
     "orientation": "portrait-primary",
+    "categories": ["utilities", "productivity"],
     "icons": [
         {
             "src": "/toKindle/icons/icon-72x72.png",
@@ -34,7 +38,6 @@
             "title": "title",
             "text": "text",
             "url": "url"
-        },
-        "enctype": "application/x-www-form-urlencoded"
+        }
     }
 } 
