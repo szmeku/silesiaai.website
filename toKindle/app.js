@@ -4,13 +4,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sharedUrl = urlParams.get('shared') || urlParams.get('url');
     const sharedTitle = urlParams.get('title');
     
+    console.log('Received URL:', sharedUrl);
+    
     if (sharedUrl) {
         try {
             showStatus('Fetching article...', 'info');
+            console.log('Using CORS proxy for:', sharedUrl);
             const article = await fetchAndParseArticle(sharedUrl, sharedTitle);
             showStatus('Opening email...', 'info');
             shareViaEmail(article);
         } catch (error) {
+            console.error('Detailed error:', error);
             showStatus('Error: ' + error.message, 'error');
         }
     }
@@ -18,8 +22,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchAndParseArticle(url, providedTitle = '') {
     try {
-        // Fetch the webpage
-        const response = await fetch(url);
+        console.log('Fetching via CORS proxy:', url);
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
+        console.log('Proxy URL:', proxyUrl);
+        const response = await fetch(proxyUrl);
         const html = await response.text();
         
         // Create a DOM parser
@@ -65,9 +71,8 @@ async function fetchAndParseArticle(url, providedTitle = '') {
             html: cleanHtml
         };
     } catch (error) {
-        // Add better error handling
         console.error('Error fetching article:', error);
-        throw new Error('Could not fetch article. CORS might be blocking access.');
+        throw new Error('Could not fetch article. Please try another URL or check your connection.');
     }
 }
 

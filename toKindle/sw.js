@@ -4,7 +4,9 @@ const ASSETS = [
     '/toKindle/index.html',
     '/toKindle/style.css',
     '/toKindle/app.js',
-    '/toKindle/manifest.json'
+    '/toKindle/manifest.json',
+    '/toKindle/libs/Readability.js',
+    '/toKindle/libs/purify.min.js'
 ];
 
 self.addEventListener('install', event => {
@@ -42,9 +44,28 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Handle all other requests
-    event.respondWith(
-        caches.match(event.request)
-            .then(response => response || fetch(event.request))
-    );
+    // Check if this is a request for our own assets
+    if (url.pathname.startsWith('/toKindle/')) {
+        event.respondWith(
+            caches.match(event.request)
+                .then(response => response || fetch(event.request))
+        );
+        return;
+    }
+
+    // For external requests, use CORS proxy
+    if (!url.pathname.startsWith('/toKindle/')) {
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${event.request.url}`;
+        event.respondWith(
+            fetch(proxyUrl)
+                .catch(error => {
+                    console.error('Proxy fetch failed:', error);
+                    return fetch(event.request); // Fallback to direct request
+                })
+        );
+        return;
+    }
+
+    // Default response for other requests
+    event.respondWith(fetch(event.request));
 }); 
