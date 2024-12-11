@@ -12,7 +12,17 @@ const ASSETS = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(ASSETS))
+            .then(cache => {
+                // Cache what we can, ignore failures
+                return Promise.allSettled(
+                    ASSETS.map(url => 
+                        cache.add(url).catch(err => {
+                            console.warn('Failed to cache:', url, err);
+                            return null;
+                        })
+                    )
+                );
+            })
     );
     self.skipWaiting();
 });
@@ -49,16 +59,11 @@ self.addEventListener('fetch', event => {
         event.respondWith(
             caches.match(event.request)
                 .then(response => response || fetch(event.request))
+                .catch(() => fetch(event.request)) // Fallback to network if cache fails
         );
         return;
     }
 
     // For external requests
-    if (!url.pathname.startsWith('/toKindle/')) {
-        event.respondWith(fetch(event.request));
-        return;
-    }
-
-    // Default response for other requests
     event.respondWith(fetch(event.request));
 }); 
