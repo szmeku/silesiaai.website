@@ -17,17 +17,23 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
     
+    // Handle share target
     if (url.pathname === '/toKindle/share-target/') {
-        // Get shared data from URL parameters
-        const sharedUrl = url.searchParams.get('url');
-        const sharedTitle = url.searchParams.get('title');
-        const sharedText = url.searchParams.get('text');
-        
-        // Redirect to main page with shared data
         event.respondWith(
-            Response.redirect('/toKindle/?shared=' + encodeURIComponent(sharedUrl || sharedText))
+            Response.redirect('/toKindle/index.html?shared=' + encodeURIComponent(url.searchParams.get('url') || url.searchParams.get('text')))
         );
+        return;
     }
+
+    // Handle root path
+    if (url.pathname === '/toKindle/') {
+        event.respondWith(
+            caches.match('/toKindle/index.html')
+                .then(response => response || fetch('/toKindle/index.html'))
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request)
             .then(response => response || fetch(event.request))

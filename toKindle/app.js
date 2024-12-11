@@ -1,54 +1,122 @@
-const KINDLE_EMAILS = [
-    'szmeku3@kindle.com',
-    'szmeku_83@kindle.com',
-    'szmeku@kindle.com'
-];
-
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Check if app was opened from share target
     const urlParams = new URLSearchParams(window.location.search);
-    const sharedContent = urlParams.get('shared');
+    const sharedUrl = urlParams.get('shared') || urlParams.get('url');
+    const sharedTitle = urlParams.get('title');
     
-    if (sharedContent) {
-        document.getElementById('websiteUrl').value = decodeURIComponent(sharedContent);
+    if (sharedUrl) {
+        try {
+            showStatus('Fetching article...', 'info');
+            const article = await fetchAndParseArticle(sharedUrl, sharedTitle);
+            showStatus('Opening email...', 'info');
+            shareViaEmail(article);
+        } catch (error) {
+            showStatus('Error: ' + error.message, 'error');
+        }
     }
 });
 
-document.getElementById('shareButton').addEventListener('click', async () => {
-    const url = document.getElementById('websiteUrl').value;
-    if (!url) {
-        showStatus('Please enter a URL', 'error');
-        return;
-    }
+async function fetchAndParseArticle(url, providedTitle = '') {
+    try {
+        // Fetch the webpage
+        const response = await fetch(url);
+        const html = await response.text();
+        
+        // Create a DOM parser
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Parse with Readability
+        const reader = new Readability(doc);
+        const article = reader.parse();
+        
+        // Use provided title if available
+        const title = providedTitle || article.title;
+        
+        // Create clean HTML
+        const cleanHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>${title}</title>
+                <style>
+                    body { 
+                        max-width: 800px; 
+                        margin: 0 auto; 
+                        padding: 20px;
+                        font-family: Georgia, serif;
+                        line-height: 1.6;
+                    }
+                    img { max-width: 100%; height: auto; }
+                </style>
+            </head>
+            <body>
+                <h1>${title}</h1>
+                ${DOMPurify.sanitize(article.content)}
+                <hr>
+                <p>Original URL: <a href="${url}">${url}</a></p>
+            </body>
+            </html>
+        `;
 
-    // Check if Web Share API is available AND if the platform supports sharing
+        return {
+            title: title,
+            html: cleanHtml
+        };
+    } catch (error) {
+        // Add better error handling
+        console.error('Error fetching article:', error);
+        throw new Error('Could not fetch article. CORS might be blocking access.');
+    }
+}
+
+function shareViaEmail(article) {
+    // Try native sharing first
     if (navigator.share && navigator.canShare) {
         const shareData = {
-            url: url,
-            title: 'Send to Kindle',
-            text: `Send this article to Kindle: ${url}`
+            files: [file],
+            title: article.title,
+            text: `Kindle version of: ${article.title}`
         };
 
-        // Check if this data can be shared on this platform
         if (navigator.canShare(shareData)) {
-            try {
-                await navigator.share(shareData);
-                showStatus('Share sheet opened successfully', 'success');
-            } catch (error) {
-                showStatus('Sharing failed: ' + error.message, 'error');
-            }
-        } else {
-            showStatus('Sharing not supported on this platform', 'error');
+            navigator.share(shareData)
+                .then(() => showStatus('Share sheet opened', 'success'))
+                .catch(error => handleFallbackSharing(article));
+            return;
         }
-    } else {
-        showStatus('Sharing not available in this browser', 'error');
     }
-});
+
+    // Fallback for desktop: Create downloadable link
+    handleFallbackSharing(article);
+}
+
+function handleFallbackSharing(article) {
+    const blob = new Blob([article.html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create download link
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${article.title.slice(0, 50)}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showStatus('Article downloaded. You can email it to your Kindle.', 'success');
+}
 
 function showStatus(message, type) {
     const status = document.getElementById('status');
     status.textContent = message;
+    if (message.includes('CORS')) {
+        status.innerHTML = message + '<br><small>Try using a CORS proxy or extension</small>';
+    } else {
+        status.textContent = message;
+    }
     status.className = type;
     status.classList.remove('hidden');
-    setTimeout(() => status.classList.add('hidden'), 3000);
+    setTimeout(() => status.classList.add('hidden'), 5000);
 } 

@@ -10,19 +10,17 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="/toKindle/icons/icon-192x192.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Readability/0.4.4/Readability.js"></script>
+    <script src="https://unpkg.com/@mozilla/readability@0.4.4/Readability.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/DOMPurify/3.0.6/purify.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Send to Kindle</h1>
-        <div id="urlInput">
-            <input type="url" id="websiteUrl" placeholder="Enter website URL">
-            <button id="shareButton">Share to Kindle</button>
-        </div>
+        <h1>Hello</h1>
         <div id="status" class="hidden"></div>
     </div>
     <script src="app.js"></script>
     <script>
-        // Register service worker for offline functionality
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/toKindle/sw.js', {
                 scope: '/toKindle/'
