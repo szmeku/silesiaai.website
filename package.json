@@ -1,14 +1,18 @@
 {
-  "name": "silesiaai.website",
+  "name": "claude-proxy",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "type": "module",
+  "engines": {
+    "node": ">=18.17.0"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "http-server": "^14.1.1"
+    "express": "^4.21.1",
+    "node-fetch": "^3.3.2",
+    "@anthropic-ai/sdk": "^0.32.1",
+    "dotenv": "^16.4.5",
+    "@web/dev-server": "^0.4.1"
+  },
+  "scripts": {
+    "start": "DEBUG=* wds --config web-dev-server.config.js"
   }
 }
