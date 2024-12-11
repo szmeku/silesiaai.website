@@ -39,82 +39,140 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sharedUrl = urlParams.get('shared') || urlParams.get('url');
     const sharedTitle = urlParams.get('title');
     
+    // Show install button by default
+    const installButton = document.getElementById('install-button');
+    installButton.classList.remove('hidden');
+    
+    // Create Gmail button
+    const container = document.querySelector('.container');
+    const gmailButton = document.createElement('button');
+    gmailButton.textContent = 'Send to Kindle via Gmail';
+    gmailButton.className = 'share-button';
+    gmailButton.disabled = true; // Disabled until we have content
+    
+    // Create test buttons for different intent formats
+    const intentTests = [
+        {
+            name: 'Gmail 1',
+            url: 'intent://compose/#Intent;' +
+                 'scheme=gmail;' +
+                 'package=com.google.android.gm;' +
+                 'type=text/plain;' +
+                 'S.android.intent.extra.SUBJECT=Test Subject;' +
+                 'S.android.intent.extra.TEXT=Test body;' +
+                 'S.browser_fallback_url=https://mail.google.com;' +
+                 'end'
+        },
+        {
+            name: 'Gmail 2',
+            url: 'intent://send/#Intent;' +
+                 'action=android.intent.action.SEND;' +
+                 'type=text/plain;' +
+                 'package=com.google.android.gm;' +
+                 'S.android.intent.extra.SUBJECT=Test Subject;' +
+                 'S.android.intent.extra.TEXT=Test body;' +
+                 'category=android.intent.category.BROWSABLE;' +
+                 'end'
+        },
+        {
+            name: 'Gmail 3',
+            url: 'intent://send/#Intent;' +
+                 'action=android.intent.action.SEND;' +
+                 'type=text/plain;' +
+                 'S.subject=Send to Kindle;' +
+                 'S.body=Here is the article;' +
+                 'package=com.google.android.gm;' +
+                 'end'
+        }
+    ];
+
+    // Add test buttons
+    intentTests.forEach(test => {
+        const button = document.createElement('button');
+        button.textContent = test.name;
+        button.className = 'share-button';
+        
+        // Create an anchor element (as per documentation)
+        const a = document.createElement('a');
+        a.href = test.url;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        
+        button.addEventListener('click', () => {
+            // Trigger click on anchor (simulating user gesture)
+            a.click();
+        });
+        
+        container.appendChild(button);
+    });
+    
+    // Set up Gmail button handler right away
+    gmailButton.addEventListener('click', () => {
+        console.log('Gmail button clicked, title:', gmailButton.dataset.title);
+        
+        const emailBody = [
+            'Please send this file to one of your Kindle email addresses:',
+            'szmeku3@kindle.com',
+            'szmeku@kindle.com',
+            'szmeku_83@kindle.com'
+        ].join('\n');
+
+        // Try multiple approaches
+        const gmailUrl = `googlegmail://co?subject=${encodeURIComponent(gmailButton.dataset.title)}&body=${encodeURIComponent(emailBody)}`;
+        const mailtoUrl = `mailto:?subject=${encodeURIComponent(gmailButton.dataset.title)}&body=${encodeURIComponent(emailBody)}`;
+        
+        // Create and submit a form (might work better than location.href)
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = gmailUrl;
+        document.body.appendChild(form);
+        
+        try {
+            form.submit();
+            showStatus('Opening Gmail...', 'success');
+        } catch (e) {
+            console.error('Form submit failed, trying location.href:', e);
+            window.location.href = gmailUrl;
+            
+            // If that fails too, try mailto
+            setTimeout(() => {
+                if (!document.hidden) {
+                    console.log('Falling back to mailto');
+                    window.location.href = mailtoUrl;
+                }
+            }, 1000);
+        }
+    });
+    
+    container.appendChild(gmailButton);
+    
     if (sharedUrl) {
         try {
             showStatus('Fetching article...', 'info');
+            console.log('Starting article fetch...');
             const article = await fetchAndParseArticle(sharedUrl, sharedTitle);
+            console.log('Article fetched successfully:', article);
             
             // Create file
             const blob = new Blob([article.html], { type: 'text/html' });
             const file = new File([blob], `${article.title.slice(0, 50)}.html`, { type: 'text/html' });
+            console.log('File created');
 
-            // Try Gmail intent first
-            const emailBody = [
-                'Please send this file to one of your Kindle email addresses:',
-                'szmeku3@kindle.com',
-                'szmeku@kindle.com',
-                'szmeku_83@kindle.com'
-            ].join('\n');
+            // Hide fetching status
+            const status = document.getElementById('status');
+            status.classList.add('hidden');
 
-            const gmailUrl = `googlegmail://co?subject=${encodeURIComponent(`Send to Kindle: ${article.title}`)}&body=${encodeURIComponent(emailBody)}`;
-            
-            // Try opening Gmail
-            window.location.href = gmailUrl;
-            
-            // If Gmail didn't open after a short delay, show share button
-            setTimeout(() => {
-                if (!document.hidden) {
-                    // Hide fetching status
-                    const status = document.getElementById('status');
-                    status.classList.add('hidden');
-
-                    // Show share button as fallback
-                    const container = document.querySelector('.container');
-                    const shareButton = document.createElement('button');
-                    shareButton.textContent = 'Send to Kindle via Email';
-                    shareButton.className = 'share-button';
-                    container.appendChild(shareButton);
-
-                    shareButton.addEventListener('click', async () => {
-                        if (navigator.share && navigator.canShare) {
-                            const shareData = {
-                                files: [file],
-                                title: `Send to Kindle: ${article.title}`,
-                                text: [
-                                    'Please send this file to one of your Kindle email addresses:',
-                                    'szmeku3@kindle.com',
-                                    'szmeku@kindle.com',
-                                    'szmeku_83@kindle.com',
-                                    '',
-                                    'Make sure to send from your approved email address!'
-                                ].join('\n')
-                            };
-
-                            try {
-                                if (navigator.canShare(shareData)) {
-                                    await navigator.share(shareData);
-                                    showStatus('Share sheet opened', 'success');
-                                    shareButton.remove();
-                                } else {
-                                    throw new Error('Sharing not supported');
-                                }
-                            } catch (error) {
-                                console.error('Share failed:', error);
-                                showStatus('Share failed: ' + error.message, 'error');
-                                downloadFile(article);
-                            }
-                            return;
-                        }
-
-                        downloadFile(article);
-                    });
-                }
-            }, 1000);
+            // Enable Gmail button and store article title
+            console.log('Enabling Gmail button with title:', article.title);
+            gmailButton.disabled = false;
+            gmailButton.dataset.title = `Send to Kindle: ${article.title}`;
 
         } catch (error) {
             console.error('Detailed error:', error);
             showStatus('Error: ' + error.message, 'error');
         }
+    } else {
+        showStatus('Share an article to get started', 'info');
     }
 });
 
@@ -226,60 +284,6 @@ function createCleanHtml(title, content, url) {
         </body>
         </html>
     `;
-}
-
-async function shareViaEmail(article) {
-    const blob = new Blob([article.html], { type: 'text/html' });
-    const file = new File([blob], `${article.title.slice(0, 50)}.html`, { type: 'text/html' });
-
-    // Check if it's a mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    if (isMobile) {
-        // Show a share button instead of automatically sharing
-        const container = document.querySelector('.container');
-        const shareButton = document.createElement('button');
-        shareButton.textContent = 'Send to Kindle via Email';
-        shareButton.className = 'share-button';
-        container.appendChild(shareButton);
-
-        shareButton.addEventListener('click', async () => {
-            if (navigator.share && navigator.canShare) {
-                const shareData = {
-                    files: [file],
-                    title: `Send to Kindle: ${article.title}`,
-                    text: [
-                        'Please send this file to one of your Kindle email addresses:',
-                        'szmeku3@kindle.com',
-                        'szmeku@kindle.com',
-                        'szmeku_83@kindle.com',
-                        '',
-                        'Make sure to send from your approved email address!'
-                    ].join('\n')
-                };
-
-                try {
-                    if (navigator.canShare(shareData)) {
-                        await navigator.share(shareData);
-                        showStatus('Share sheet opened', 'success');
-                    } else {
-                        throw new Error('Sharing not supported');
-                    }
-                } catch (error) {
-                    console.error('Share failed:', error);
-                    showStatus('Share failed: ' + error.message, 'error');
-                    downloadFile(article);
-                }
-                return;
-            }
-
-            downloadFile(article);
-        });
-
-        showStatus('Click "Send to Kindle via Email" to share', 'info');
-    } else {
-        downloadFile(article);
-    }
 }
 
 function downloadFile(article) {
