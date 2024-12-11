@@ -7,13 +7,13 @@ mkdir -p certs
 openssl genrsa -out certs/rootCA.key 4096
 openssl req -x509 -new -nodes -key certs/rootCA.key -sha256 -days 3650 \
     -out certs/rootCA.pem \
-    -subj "/C=US/ST=Local/L=Local/O=Development/CN=Local Development CA"
+    -subj "/C=US/ST=Local/L=Local/O=Bebok/CN=Bebok Authority"
 
 # Generate server key and CSR
 openssl genrsa -out certs/key.pem 2048
 openssl req -new -key certs/key.pem \
     -out certs/server.csr \
-    -subj "/C=US/ST=Local/L=Local/O=Development/CN=localhost"
+    -subj "/C=US/ST=Local/L=Local/O=Bebok/CN=*.localhost"
 
 # Sign the certificate (valid for 10 years)
 openssl x509 -req -in certs/server.csr \
@@ -23,6 +23,6 @@ openssl x509 -req -in certs/server.csr \
     -out certs/cert.pem \
     -days 3650 \
     -sha256 \
-    -extfile <(printf "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1,IP:192.168.1.4")
+    -extfile <(printf "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:192.168.1.4,DNS:*.192.168.1.4,IP:127.0.0.1,IP:192.168.1.4")
 
 
