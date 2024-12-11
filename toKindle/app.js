@@ -22,22 +22,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchAndParseArticle(url, providedTitle = '') {
     try {
-        console.log('Fetching via CORS proxy:', url);
+        console.log('Starting fetch for:', url);
         const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
-        console.log('Proxy URL:', proxyUrl);
-        const response = await fetch(proxyUrl);
+        console.log('Using proxy URL:', proxyUrl);
+        const response = await fetch(proxyUrl, {
+            mode: 'cors',
+            credentials: 'omit'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const html = await response.text();
         
-        // Create a DOM parser
+        // Check if this is likely an SPA
+        if (html.includes('react') || html.includes('chunk.js') || !html.includes('<article')) {
+            throw new Error('This appears to be a dynamic website. Please try sharing a direct article URL instead of the homepage.');
+        }
+        
+        console.log('Parsing HTML...');
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         
-        // Parse with Readability
-        const reader = new Readability(doc);
-        const article = reader.parse();
+        console.log('Received HTML length:', html.length);
+        console.log('First 500 chars of HTML:', html.substring(0, 500));
         
-        // Use provided title if available
-        const title = providedTitle || article.title;
+        console.log('Creating Readability instance...', typeof Readability);
+        if (typeof Readability === 'undefined') {
+            throw new Error('Readability library not loaded properly');
+        }
+
+        // Create a clone of the document to avoid modifications
+        const docClone = doc.cloneNode(true);
+        console.log('Document cloned');
+
+        // Initialize Readability with more options
+        const reader = new Readability(docClone, {
+            debug: true,
+            charThreshold: 20,
+            classesToPreserve: ['article', 'content']
+        });
+        console.log('Readability instance created');
+
+        const article = reader.parse();
+        console.log('Parse result:', article);
+        
+        if (!article) {
+            console.error('Readability failed to parse article');
+            throw new Error('Could not parse article content');
+        }
+
+        console.log('Article parsed successfully:', article.title);
         
         // Create clean HTML
         const cleanHtml = `
@@ -45,7 +81,7 @@ async function fetchAndParseArticle(url, providedTitle = '') {
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>${title}</title>
+                <title>${article.title}</title>
                 <style>
                     body { 
                         max-width: 800px; 
@@ -58,7 +94,7 @@ async function fetchAndParseArticle(url, providedTitle = '') {
                 </style>
             </head>
             <body>
-                <h1>${title}</h1>
+                <h1>${article.title}</h1>
                 ${DOMPurify.sanitize(article.content)}
                 <hr>
                 <p>Original URL: <a href="${url}">${url}</a></p>
@@ -67,12 +103,13 @@ async function fetchAndParseArticle(url, providedTitle = '') {
         `;
 
         return {
-            title: title,
+            title: article.title,
             html: cleanHtml
         };
     } catch (error) {
-        console.error('Error fetching article:', error);
-        throw new Error('Could not fetch article. Please try another URL or check your connection.');
+        console.error('Error details:', error);
+        console.error('Response:', error.response);
+        throw new Error(`Could not fetch article: ${error.message}`);
     }
 }
 
