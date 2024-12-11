@@ -43,3 +43,22 @@ body {
 .hidden {
     display: none !important;
 } 
+
+.share-button {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 10px 0;
+    font-size: 16px;
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    margin: 20px auto;
+}
+
+.share-button:hover {
+    background-color: #1976D2;
+} 

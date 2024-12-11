@@ -35,20 +35,82 @@ window.addEventListener('appinstalled', () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check if app was opened from share target
     const urlParams = new URLSearchParams(window.location.search);
     const sharedUrl = urlParams.get('shared') || urlParams.get('url');
     const sharedTitle = urlParams.get('title');
     
-    console.log('Received URL:', sharedUrl);
-    
     if (sharedUrl) {
         try {
             showStatus('Fetching article...', 'info');
-            console.log('Using CORS proxy for:', sharedUrl);
             const article = await fetchAndParseArticle(sharedUrl, sharedTitle);
-            showStatus('Opening email...', 'info');
-            shareViaEmail(article);
+            
+            // Create file
+            const blob = new Blob([article.html], { type: 'text/html' });
+            const file = new File([blob], `${article.title.slice(0, 50)}.html`, { type: 'text/html' });
+
+            // Try Gmail intent first
+            const emailBody = [
+                'Please send this file to one of your Kindle email addresses:',
+                'szmeku3@kindle.com',
+                'szmeku@kindle.com',
+                'szmeku_83@kindle.com'
+            ].join('\n');
+
+            const gmailUrl = `googlegmail://co?subject=${encodeURIComponent(`Send to Kindle: ${article.title}`)}&body=${encodeURIComponent(emailBody)}`;
+            
+            // Try opening Gmail
+            window.location.href = gmailUrl;
+            
+            // If Gmail didn't open after a short delay, show share button
+            setTimeout(() => {
+                if (!document.hidden) {
+                    // Hide fetching status
+                    const status = document.getElementById('status');
+                    status.classList.add('hidden');
+
+                    // Show share button as fallback
+                    const container = document.querySelector('.container');
+                    const shareButton = document.createElement('button');
+                    shareButton.textContent = 'Send to Kindle via Email';
+                    shareButton.className = 'share-button';
+                    container.appendChild(shareButton);
+
+                    shareButton.addEventListener('click', async () => {
+                        if (navigator.share && navigator.canShare) {
+                            const shareData = {
+                                files: [file],
+                                title: `Send to Kindle: ${article.title}`,
+                                text: [
+                                    'Please send this file to one of your Kindle email addresses:',
+                                    'szmeku3@kindle.com',
+                                    'szmeku@kindle.com',
+                                    'szmeku_83@kindle.com',
+                                    '',
+                                    'Make sure to send from your approved email address!'
+                                ].join('\n')
+                            };
+
+                            try {
+                                if (navigator.canShare(shareData)) {
+                                    await navigator.share(shareData);
+                                    showStatus('Share sheet opened', 'success');
+                                    shareButton.remove();
+                                } else {
+                                    throw new Error('Sharing not supported');
+                                }
+                            } catch (error) {
+                                console.error('Share failed:', error);
+                                showStatus('Share failed: ' + error.message, 'error');
+                                downloadFile(article);
+                            }
+                            return;
+                        }
+
+                        downloadFile(article);
+                    });
+                }
+            }, 1000);
+
         } catch (error) {
             console.error('Detailed error:', error);
             showStatus('Error: ' + error.message, 'error');
@@ -65,12 +127,12 @@ async function fetchAndParseArticle(url, providedTitle = '') {
             {
                 name: 'Original',
                 url: url,
-                transform: url => `https://cors-anywhere.herokuapp.com/${url}`
+                transform: url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
             },
             {
                 name: 'Google Cache',
                 url: `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
-                transform: url => `https://cors-anywhere.herokuapp.com/${url}`
+                transform: url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
             }
         ];
 
@@ -83,14 +145,13 @@ async function fetchAndParseArticle(url, providedTitle = '') {
             try {
                 console.log(`Trying ${src.name}:`, src.url);
                 const proxyUrl = src.transform(src.url);
-                const response = await fetch(proxyUrl, {
-                    mode: 'cors',
-                    credentials: 'omit'
-                });
+                const response = await fetch(proxyUrl);
                 
                 if (!response.ok) continue;
                 
-                html = await response.text();
+                const data = await response.json();
+                html = data.contents; // allorigins returns content in .contents property
+                
                 if (html && html.length > 1000) {
                     source = src.name;
                     break;
@@ -167,29 +228,58 @@ function createCleanHtml(title, content, url) {
     `;
 }
 
-function shareViaEmail(article) {
+async function shareViaEmail(article) {
     const blob = new Blob([article.html], { type: 'text/html' });
-    const file = new File([blob], 'article.html', { type: 'text/html' });
+    const file = new File([blob], `${article.title.slice(0, 50)}.html`, { type: 'text/html' });
 
-    // Try native sharing first (mobile)
-    if (navigator.share && navigator.canShare) {
-        const shareData = {
-            files: [file],
-            title: article.title,
-            text: `Kindle version of: ${article.title}`
-        };
+    // Check if it's a mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        if (navigator.canShare(shareData)) {
-            navigator.share(shareData)
-                .then(() => showStatus('Share sheet opened', 'success'))
-                .catch(() => downloadFile(article))
-                .catch(error => showStatus('Share failed: ' + error.message, 'error'));
-            return;
-        }
+    if (isMobile) {
+        // Show a share button instead of automatically sharing
+        const container = document.querySelector('.container');
+        const shareButton = document.createElement('button');
+        shareButton.textContent = 'Send to Kindle via Email';
+        shareButton.className = 'share-button';
+        container.appendChild(shareButton);
+
+        shareButton.addEventListener('click', async () => {
+            if (navigator.share && navigator.canShare) {
+                const shareData = {
+                    files: [file],
+                    title: `Send to Kindle: ${article.title}`,
+                    text: [
+                        'Please send this file to one of your Kindle email addresses:',
+                        'szmeku3@kindle.com',
+                        'szmeku@kindle.com',
+                        'szmeku_83@kindle.com',
+                        '',
+                        'Make sure to send from your approved email address!'
+                    ].join('\n')
+                };
+
+                try {
+                    if (navigator.canShare(shareData)) {
+                        await navigator.share(shareData);
+                        showStatus('Share sheet opened', 'success');
+                    } else {
+                        throw new Error('Sharing not supported');
+                    }
+                } catch (error) {
+                    console.error('Share failed:', error);
+                    showStatus('Share failed: ' + error.message, 'error');
+                    downloadFile(article);
+                }
+                return;
+            }
+
+            downloadFile(article);
+        });
+
+        showStatus('Click "Send to Kindle via Email" to share', 'info');
+    } else {
+        downloadFile(article);
     }
-
-    // If native sharing not available, download the file
-    downloadFile(article);
 }
 
 function downloadFile(article) {
