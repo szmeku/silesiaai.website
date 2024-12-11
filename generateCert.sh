@@ -23,4 +23,4 @@ openssl x509 -req -in certs/server.csr \
     -out certs/cert.pem \
     -days 3650 \
     -sha256 \
-    -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1") 
+    -extfile <(printf "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1,IP:192.168.1.4")
