@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send to Kindle</title>
+    <link rel="manifest" href="/toKindle/manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <link rel="stylesheet" href="style.css">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/toKindle/icons/icon-192x192.png">
+</head>
+<body>
+    <div class="container">
+        <h1>Send to Kindle</h1>
+        <div id="urlInput">
+            <input type="url" id="websiteUrl" placeholder="Enter website URL">
+            <button id="shareButton">Share to Kindle</button>
+        </div>
+        <div id="status" class="hidden"></div>
+    </div>
+    <script src="app.js"></script>
+    <script>
+        // Register service worker for offline functionality
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/toKindle/sw.js', {
+                scope: '/toKindle/'
+            })
+            .then(registration => console.log('ServiceWorker registered'))
+            .catch(err => console.log('ServiceWorker registration failed: ', err));
+        }
+    </script>
+</body>
+</html> 
