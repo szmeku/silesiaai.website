@@ -1,6 +1,6 @@
 function getEventsEdges(groupData, type) {
     const isPast = type === 'past';
-    const prefix = isPast ? 'events({"filter":{"status":["PAST"]},"first":10,' : 'events({"filter":{"afterDateTime"';
+    const prefix = isPast ? 'events({"filter":{"beforeDateTime":' : 'events({"filter":{"afterDateTime"';
 
     // Iterate over object keys to find the matching key
     for (const key in groupData) {
@@ -16,15 +16,8 @@ function getEventsEdges(groupData, type) {
 window.fetchAndParseMeetupEvents = async function (groupUrlname, type) {
     try {
 
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.meetup.com/${groupUrlname}/events/?type=${type}`)}`, {
-            preflight: false
-        })
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const htmlContent = await response.json().then(v => v.contents);
+        const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.meetup.com/${groupUrlname}/events/?type=${type}`)}`)
+        const htmlContent = await response.text()
 
         // Parse the HTML content
         function parseMeetupEvents(htmlContent) {
@@ -37,6 +30,7 @@ window.fetchAndParseMeetupEvents = async function (groupUrlname, type) {
 
                 const jsonData = JSON.parse(jsonMatch[1]);
                 const apolloState = jsonData.props.pageProps.__APOLLO_STATE__;
+
 
                 // Find the Group entry in apolloState
                 const groupKey = Object.keys(apolloState).find(key => {
